@@ -185,6 +185,12 @@
       transform: translateY(0);
     }
 
+    .btn-secondary {
+      background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
     .canvas-wrap {
       position: relative;
       width: 100%;
@@ -213,6 +219,7 @@
       background: rgba(2, 6, 23, 0.84);
       text-align: center;
       padding: 20px;
+      z-index: 10;
     }
 
     .overlay.show {
@@ -220,7 +227,8 @@
     }
 
     .overlay-card {
-      max-width: 320px;
+      max-width: 340px;
+      width: 100%;
     }
 
     .overlay-title {
@@ -236,6 +244,11 @@
       font-size: 15px;
       margin-bottom: 18px;
       line-height: 1.7;
+    }
+
+    .overlay-actions {
+      display: grid;
+      gap: 10px;
     }
 
     .mobile-controls {
@@ -367,6 +380,14 @@
         min-height: 54px;
         font-size: 20px;
       }
+
+      .overlay-title {
+        font-size: 18px;
+      }
+
+      .overlay-text {
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -382,11 +403,17 @@
         <div class="canvas-wrap">
           <canvas id="gameCanvas" width="300" height="600"></canvas>
 
-          <div class="overlay" id="overlay">
+          <div class="overlay show" id="overlay">
             <div class="overlay-card">
-              <div class="overlay-title" id="overlayTitle">GAME OVER</div>
-              <div class="overlay-text" id="overlayText">RESTARTで最初から遊べます</div>
-              <button class="btn" id="overlayBtn">PLAY AGAIN</button>
+              <div class="overlay-title" id="overlayTitle">TETRIS</div>
+              <div class="overlay-text" id="overlayText">
+                STARTを押してゲーム開始<br>
+                PCはキーボード、スマホは下のボタンで操作
+              </div>
+              <div class="overlay-actions">
+                <button class="btn" id="startBtn">START GAME</button>
+                <button class="btn btn-secondary" id="overlayBtn">RESTART</button>
+              </div>
             </div>
           </div>
         </div>
@@ -413,6 +440,11 @@
           <div class="stat">
             <div class="stat-label">SCORE</div>
             <div class="stat-value" id="score">0</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">BEST SCORE</div>
+            <div class="stat-value" id="bestScore">0</div>
           </div>
 
           <div class="stat">
@@ -453,6 +485,17 @@
   </div>
 
   <script>
+    // ===== 効果音 =====
+    const moveSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3");
+    const rotateSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3");
+    const lineSound = new Audio("https://assets.mixkit.co/active_storage/sfx/270/270-preview.mp3");
+    const dropSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3");
+
+    moveSound.volume = 0.2;
+    rotateSound.volume = 0.3;
+    lineSound.volume = 0.4;
+    dropSound.volume = 0.3;
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -460,6 +503,7 @@
     const nextCtx = nextCanvas.getContext('2d');
 
     const scoreEl = document.getElementById('score');
+    const bestScoreEl = document.getElementById('bestScore');
     const linesEl = document.getElementById('lines');
     const levelEl = document.getElementById('level');
 
@@ -468,6 +512,7 @@
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayText = document.getElementById('overlayText');
     const overlayBtn = document.getElementById('overlayBtn');
+    const startBtn = document.getElementById('startBtn');
 
     const btnLeft = document.getElementById('btnLeft');
     const btnRotate = document.getElementById('btnRotate');
@@ -479,6 +524,7 @@
     const COLS = 10;
     const ROWS = 20;
     const BLOCK = 30;
+    const BEST_SCORE_KEY = 'tetris_best_score_v1';
 
     const COLORS = {
       I: '#22d3ee',
@@ -534,12 +580,26 @@
     let currentPiece = null;
     let nextPiece = null;
     let score = 0;
+    let bestScore = loadBestScore();
     let lines = 0;
     let level = 1;
     let dropCounter = 0;
     let lastTime = 0;
     let gameOver = false;
     let paused = false;
+    let started = false;
+
+    function loadBestScore() {
+      const saved = localStorage.getItem(BEST_SCORE_KEY);
+      return saved ? Number(saved) : 0;
+    }
+
+    function saveBestScore() {
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+      }
+    }
 
     function createBoard() {
       return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
@@ -557,6 +617,7 @@
 
     function updateStats() {
       scoreEl.textContent = score;
+      bestScoreEl.textContent = bestScore;
       linesEl.textContent = lines;
       levelEl.textContent = level;
     }
@@ -671,7 +732,7 @@
     }
 
     function playerRotate() {
-      if (!currentPiece || gameOver || paused) return;
+      if (!currentPiece || gameOver || paused || !started) return;
 
       const originalMatrix = currentPiece.matrix;
       const originalX = currentPiece.x;
@@ -691,6 +752,8 @@
         }
       }
 
+      rotateSound.currentTime = 0;
+      rotateSound.play().catch(() => {});
       drawBoard();
     }
 
@@ -716,7 +779,11 @@
         score += lineScores[cleared] * level;
         lines += cleared;
         level = Math.floor(lines / 10) + 1;
+        saveBestScore();
         updateStats();
+
+        lineSound.currentTime = 0;
+        lineSound.play().catch(() => {});
       }
     }
 
@@ -739,10 +806,14 @@
     }
 
     function playerMove(dir) {
-      if (!currentPiece || gameOver || paused) return;
+      if (!currentPiece || gameOver || paused || !started) return;
+
       currentPiece.x += dir;
       if (collide(board, currentPiece)) {
         currentPiece.x -= dir;
+      } else {
+        moveSound.currentTime = 0;
+        moveSound.play().catch(() => {});
       }
       drawBoard();
     }
@@ -755,7 +826,7 @@
     }
 
     function playerDrop() {
-      if (!currentPiece || gameOver || paused) return;
+      if (!currentPiece || gameOver || paused || !started) return;
 
       currentPiece.y++;
       if (collide(board, currentPiece)) {
@@ -767,7 +838,7 @@
     }
 
     function hardDrop() {
-      if (!currentPiece || gameOver || paused) return;
+      if (!currentPiece || gameOver || paused || !started) return;
 
       while (!collide(board, currentPiece)) {
         currentPiece.y++;
@@ -775,30 +846,46 @@
       currentPiece.y--;
       lockAndContinue();
       dropCounter = 0;
+
+      dropSound.currentTime = 0;
+      dropSound.play().catch(() => {});
+    }
+
+    function showOverlay(title, text, showStartButton = false) {
+      overlayTitle.textContent = title;
+      overlayText.innerHTML = text;
+      startBtn.style.display = showStartButton ? 'block' : 'none';
+      overlay.classList.add('show');
+    }
+
+    function hideOverlay() {
+      overlay.classList.remove('show');
     }
 
     function endGame() {
       gameOver = true;
-      overlayTitle.textContent = 'GAME OVER';
-      overlayText.textContent = 'RESTARTで最初から遊べます';
-      overlay.classList.add('show');
+      saveBestScore();
+      updateStats();
+      showOverlay(
+        'GAME OVER',
+        `スコア：${score}<br>ベスト：${bestScore}<br>RESTARTで最初から遊べます`,
+        false
+      );
     }
 
     function togglePause() {
-      if (gameOver) return;
+      if (gameOver || !started) return;
 
       paused = !paused;
 
       if (paused) {
-        overlayTitle.textContent = 'PAUSED';
-        overlayText.textContent = 'PキーまたはPAUSEで再開';
-        overlay.classList.add('show');
+        showOverlay('PAUSED', 'PキーまたはPAUSEで再開', false);
       } else {
-        overlay.classList.remove('show');
+        hideOverlay();
       }
     }
 
-    function resetGame() {
+    function resetGame(showStart = true) {
       board = createBoard();
       currentPiece = null;
       nextPiece = createPiece();
@@ -809,17 +896,40 @@
       lastTime = 0;
       gameOver = false;
       paused = false;
-      overlay.classList.remove('show');
+      started = !showStart;
+
       updateStats();
       spawnPiece();
       drawBoard();
+
+      if (showStart) {
+        showOverlay(
+          'TETRIS',
+          'STARTを押してゲーム開始<br>PCはキーボード、スマホは下のボタンで操作',
+          true
+        );
+      } else {
+        hideOverlay();
+      }
+    }
+
+    function startGame() {
+      started = true;
+      paused = false;
+      gameOver = false;
+      hideOverlay();
+
+      moveSound.play().then(() => {
+        moveSound.pause();
+        moveSound.currentTime = 0;
+      }).catch(() => {});
     }
 
     function update(time = 0) {
       const delta = time - lastTime;
       lastTime = time;
 
-      if (!gameOver && !paused) {
+      if (!gameOver && !paused && started) {
         dropCounter += delta;
         if (dropCounter > getDropInterval()) {
           playerDrop();
@@ -838,7 +948,7 @@
         return;
       }
 
-      if (gameOver || paused) return;
+      if (gameOver || paused || !started) return;
 
       if (e.code === 'ArrowLeft') {
         e.preventDefault();
@@ -873,10 +983,12 @@
     bindTap(btnDrop, () => playerDrop());
     bindTap(btnHardDrop, () => hardDrop());
     bindTap(btnPause, () => togglePause());
-    bindTap(restartBtn, () => resetGame());
-    bindTap(overlayBtn, () => resetGame());
+    bindTap(restartBtn, () => resetGame(false));
+    bindTap(overlayBtn, () => resetGame(false));
+    bindTap(startBtn, () => startGame());
 
-    resetGame();
+    updateStats();
+    resetGame(true);
     update();
   </script>
 </body>
