@@ -15,7 +15,7 @@
       --sub: #94a3b8;
       --accent: #22d3ee;
       --accent-2: #a78bfa;
-      --border: rgba(255,255,255,0.08);
+      --border: rgba(255, 255, 255, 0.08);
       --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
     }
 
@@ -67,19 +67,20 @@
       color: var(--sub);
       text-align: center;
       font-size: 14px;
+      line-height: 1.8;
     }
 
     .game-container {
       width: 100%;
       display: flex;
       justify-content: center;
-      align-items: stretch;
+      align-items: flex-start;
       gap: 24px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .panel {
-      background: linear-gradient(180deg, rgba(17,24,39,0.92), rgba(15,23,42,0.92));
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 42, 0.92));
       border: 1px solid var(--border);
       border-radius: 20px;
       box-shadow: var(--shadow);
@@ -93,7 +94,8 @@
       gap: 16px;
       min-width: 240px;
       max-width: 280px;
-      width: 100%;
+      width: 280px;
+      flex-shrink: 0;
     }
 
     .score-board {
@@ -106,7 +108,7 @@
       padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .stat-label {
@@ -125,7 +127,7 @@
       padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .next-title {
@@ -139,14 +141,14 @@
       margin: 0 auto;
       background: #020617;
       border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .controls {
       padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(255, 255, 255, 0.03);
       color: var(--sub);
       font-size: 13px;
       line-height: 1.8;
@@ -182,14 +184,17 @@
     .board-wrap {
       position: relative;
       padding: 18px;
+      flex-shrink: 0;
     }
 
     #gameCanvas {
       display: block;
+      width: 300px;
+      height: 600px;
       background: #020617;
       border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
     }
 
     .overlay {
@@ -235,55 +240,93 @@
     }
 
     /* =========================
-       Responsive (スマホ対応)
+       Mobile Layout Fix
        ========================= */
-
     @media (max-width: 860px) {
-
       body {
-        padding: 10px;
+        padding: 14px;
+      }
+
+      .app {
+        gap: 14px;
       }
 
       h1 {
-        font-size: 22px;
-        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        line-height: 1.7;
+        padding: 0 8px;
       }
 
       .game-container {
-        transform: scale(0.9);
-        transform-origin: top center;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
       }
 
-      canvas {
-        max-width: 100%;
-        height: auto;
+      .board-wrap {
+        order: 1;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        padding: 14px;
       }
 
-      .score-board {
-        font-size: 14px;
+      .left-panel {
+        order: 2;
+        width: 100%;
+        max-width: 360px;
+        min-width: 0;
       }
 
+      #gameCanvas {
+        width: min(78vw, 300px);
+        height: calc(min(78vw, 300px) * 2);
+      }
+
+      .overlay {
+        inset: 14px;
+      }
     }
 
     @media (max-width: 480px) {
-
       body {
-        padding: 5px;
+        padding: 10px;
       }
 
       h1 {
         font-size: 18px;
       }
 
-      .game-container {
-        transform: scale(0.75);
-        transform-origin: top center;
+      .subtitle {
+        font-size: 11px;
       }
 
-      .score-board {
+      .left-panel {
+        max-width: 100%;
+        padding: 14px;
+      }
+
+      .stat-value {
+        font-size: 20px;
+      }
+
+      .controls {
         font-size: 12px;
       }
 
+      #nextCanvas {
+        width: 100px;
+        height: 100px;
+      }
+
+      #gameCanvas {
+        width: min(82vw, 280px);
+        height: calc(min(82vw, 280px) * 2);
+      }
     }
   </style>
 </head>
@@ -378,39 +421,39 @@
 
     const SHAPES = {
       I: [
-        [0,0,0,0],
-        [1,1,1,1],
-        [0,0,0,0],
-        [0,0,0,0]
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
       ],
       O: [
-        [1,1],
-        [1,1]
+        [1, 1],
+        [1, 1]
       ],
       T: [
-        [0,1,0],
-        [1,1,1],
-        [0,0,0]
+        [0, 1, 0],
+        [1, 1, 1],
+        [0, 0, 0]
       ],
       S: [
-        [0,1,1],
-        [1,1,0],
-        [0,0,0]
+        [0, 1, 1],
+        [1, 1, 0],
+        [0, 0, 0]
       ],
       Z: [
-        [1,1,0],
-        [0,1,1],
-        [0,0,0]
+        [1, 1, 0],
+        [0, 1, 1],
+        [0, 0, 0]
       ],
       J: [
-        [1,0,0],
-        [1,1,1],
-        [0,0,0]
+        [1, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0]
       ],
       L: [
-        [0,0,1],
-        [1,1,1],
-        [0,0,0]
+        [0, 0, 1],
+        [1, 1, 1],
+        [0, 0, 0]
       ]
     };
 
@@ -454,6 +497,16 @@
       targetCtx.fillRect(x * blockSize + 3, y * blockSize + 3, blockSize - 6, 6);
     }
 
+    function drawMatrix(matrix, offsetX, offsetY, color, targetCtx = ctx, blockSize = BLOCK) {
+      matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value) {
+            drawCell(offsetX + x, offsetY + y, color, targetCtx, blockSize);
+          }
+        });
+      });
+    }
+
     function drawBoard() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -474,16 +527,6 @@
       if (currentPiece) {
         drawMatrix(currentPiece.matrix, currentPiece.x, currentPiece.y, COLORS[currentPiece.type]);
       }
-    }
-
-    function drawMatrix(matrix, offsetX, offsetY, color, targetCtx = ctx, blockSize = BLOCK) {
-      matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-          if (value) {
-            drawCell(offsetX + x, offsetY + y, color, targetCtx, blockSize);
-          }
-        });
-      });
     }
 
     function drawNextPiece() {
